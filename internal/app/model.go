@@ -28,6 +28,7 @@ type Model struct {
 	deps     Dependencies
 	state    modelState
 	filter   textinput.Model
+	width    int
 	hosts    []sshconfig.Host
 	visible  []sshconfig.Host
 	selected int

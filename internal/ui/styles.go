@@ -6,4 +6,6 @@ var (
 	Title = lipgloss.NewStyle().Bold(true)
 	Muted = lipgloss.NewStyle().Faint(true)
 	Error = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	Panel = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("238")).Padding(0, 1)
+	PanelTitle = lipgloss.NewStyle().Bold(true)
 )

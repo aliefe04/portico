@@ -5,9 +5,12 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/portico-dev/portico/internal/sshconfig"
 	"github.com/portico-dev/portico/internal/ui"
 )
+
+const wideLayoutThreshold = 100
 
 func (m Model) View() string {
 	switch m.state {
@@ -24,6 +27,8 @@ func (m Model) View() string {
 
 		if len(m.visible) == 0 {
 			parts = append(parts, ui.Muted.Render("No hosts match the current filter."))
+		} else if m.useWideLayout() {
+			parts = append(parts, m.renderSplitLayout())
 		} else {
 			parts = append(parts, m.renderHostList(), ui.Muted.Render("Selected host"), m.renderHostDetails(m.visible[m.selected]))
 		}
@@ -31,6 +36,32 @@ func (m Model) View() string {
 		parts = append(parts, ui.Muted.Render("up/down: move  esc/ctrl+c: quit"))
 		return strings.Join(parts, "\n\n")
 	}
+}
+
+func (m Model) useWideLayout() bool {
+	return m.width >= wideLayoutThreshold && len(m.visible) > 0
+}
+
+func (m Model) renderSplitLayout() string {
+	leftWidth := m.width / 3
+	if leftWidth < 28 {
+		leftWidth = 28
+	}
+	if leftWidth > 40 {
+		leftWidth = 40
+	}
+	rightWidth := m.width - leftWidth - 4
+
+	left := ui.Panel.Width(leftWidth).Render(strings.Join([]string{
+		ui.PanelTitle.Render("Hosts"),
+		m.renderHostList(),
+	}, "\n\n"))
+	right := ui.Panel.Width(rightWidth).Render(strings.Join([]string{
+		ui.PanelTitle.Render("Details"),
+		m.renderHostDetails(m.visible[m.selected]),
+	}, "\n\n"))
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, right)
 }
 
 func (m Model) renderHostList() string {

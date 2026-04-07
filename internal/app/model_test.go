@@ -451,6 +451,69 @@ func TestModelViewShowsSelectedHostDetails(t *testing.T) {
 	}
 }
 
+func TestModelViewUsesSplitLayoutOnWideTerminals(t *testing.T) {
+	m := readyModelForTest([]sshconfig.Host{
+		{
+			Alias:    "web",
+			Hostname: "web.example.com",
+			User:     "alice",
+		},
+		{Alias: "db", Hostname: "db.internal"},
+	})
+
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	next := updated.(Model)
+
+	if !next.useWideLayout() {
+		t.Fatal("useWideLayout() = false, want true at threshold width")
+	}
+
+	split := next.renderSplitLayout()
+	lines := strings.Split(split, "\n")
+	if len(lines) < 2 {
+		t.Fatalf("renderSplitLayout() = %q, want multiple lines", split)
+	}
+	if !strings.Contains(lines[1], "Hosts") || !strings.Contains(lines[1], "Details") {
+		t.Fatalf("renderSplitLayout() = %q, want side-by-side panel titles on the same row", split)
+	}
+
+	view := next.View()
+	for _, want := range []string{
+		"Hosts",
+		"Details",
+		"Alias: web",
+		"Hostname: web.example.com",
+	} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("View() = %q, want substring %q", view, want)
+		}
+	}
+}
+
+func TestModelWindowSizeUpdatesLayoutState(t *testing.T) {
+	m := readyModelForTest([]sshconfig.Host{{Alias: "web"}})
+
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 99, Height: 24})
+	next := updated.(Model)
+
+	if next.width != 99 {
+		t.Fatalf("width = %d, want 99", next.width)
+	}
+
+	if next.filter.Width != 97 {
+		t.Fatalf("filter.Width = %d, want 97", next.filter.Width)
+	}
+
+	if next.useWideLayout() {
+		t.Fatal("useWideLayout() = true, want false below threshold")
+	}
+
+	view := next.View()
+	if strings.Contains(view, "Hosts") || strings.Contains(view, "Details") {
+		t.Fatalf("View() = %q, want stacked layout below threshold", view)
+	}
+}
+
 func TestModelSanitizesRenderedHostValues(t *testing.T) {
 	m := readyModelForTest([]sshconfig.Host{
 		{

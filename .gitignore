@@ -1,0 +1,8 @@
+.DS_Store
+.tmp/
+/docs/superpowers/
+/codedb.snapshot
+/cover.out
+/coverage.out
+/dist/
+/portico

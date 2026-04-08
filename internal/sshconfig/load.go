@@ -61,6 +61,7 @@ type flattenedBlock struct {
 type visibleHost struct {
 	block      *ssh.Host
 	sourcePath string
+	filePath   string
 }
 
 type loadState struct {
@@ -123,7 +124,7 @@ func collectHosts(file loadedFile, state loadState) ([]Host, error) {
 
 	out := make([]Host, 0, len(visible))
 	for _, host := range visible {
-		out = append(out, normalizeHost(config, host.block, host.sourcePath))
+		out = append(out, normalizeHost(config, host.block, host.sourcePath, host.filePath))
 	}
 
 	return out, nil
@@ -166,7 +167,7 @@ func collectVisibleHosts(file loadedFile, state loadState) ([]visibleHost, error
 			continue
 		}
 
-		out = append(out, visibleHost{block: block, sourcePath: file.displayPath})
+		out = append(out, visibleHost{block: block, sourcePath: file.displayPath, filePath: file.parsePath})
 	}
 
 	return out, nil
@@ -256,7 +257,7 @@ func (s loadState) clone() loadState {
 	return s
 }
 
-func normalizeHost(config *ssh.Config, block *ssh.Host, sourcePath string) Host {
+func normalizeHost(config *ssh.Config, block *ssh.Host, sourcePath, filePath string) Host {
 	patterns := make([]string, 0, len(block.Patterns))
 	for _, pattern := range block.Patterns {
 		patterns = append(patterns, pattern.String())
@@ -278,6 +279,7 @@ func normalizeHost(config *ssh.Config, block *ssh.Host, sourcePath string) Host 
 		IdentityFiles: resolvedValues(config, lookupAlias, "IdentityFile"),
 		ProxyJump:     resolvedValue(config, lookupAlias, "ProxyJump"),
 		SourcePath:    sourcePath,
+		filePath:      filePath,
 		Wildcard:      hasWildcard(patterns),
 	}
 }

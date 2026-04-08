@@ -31,6 +31,8 @@ go run ./cmd/portico
 
 Contributions are welcome.
 
+- Branch from `main` for active development.
+- Use short-lived feature branches.
 - Keep changes small and reviewable
 - Prefer safe defaults and clear UX
 - Add tests for behavior changes

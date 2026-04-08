@@ -1,6 +1,5 @@
 .DS_Store
 .tmp/
-.worktrees/
 /docs/superpowers/
 /codedb.snapshot
 /cover.out

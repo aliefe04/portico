@@ -11,7 +11,7 @@ Thanks for helping build Portico.
 
 ## Workflow
 
-1. Branch from `main` for each change
+1. Branch from `master` for each change
 2. Keep PRs focused on one idea
 3. Include screenshots or terminal output when useful
 4. Make sure tests pass before asking for review

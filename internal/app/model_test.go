@@ -2,6 +2,8 @@ package app
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -561,6 +563,421 @@ func TestModelSanitizesRenderedError(t *testing.T) {
 
 	if !strings.Contains(view, "boom[31m") {
 		t.Fatalf("View() = %q, want sanitized error text", view)
+	}
+}
+
+func TestModelStartsCreateModeFromReady(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	configPath := filepath.Join(home, ".ssh", "config")
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q) error = %v", filepath.Dir(configPath), err)
+	}
+	if err := os.WriteFile(configPath, []byte("Host web\n  HostName web.example.com\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", configPath, err)
+	}
+
+	m := New(Dependencies{
+		Version: "dev",
+		LoadHosts: func() (sshconfig.Result, error) {
+			return sshconfig.Load(configPath)
+		},
+	})
+
+	updated, _ := m.Update(m.Init()())
+	next := updated.(Model)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyCtrlN})
+	next = updated.(Model)
+
+	if next.state != stateEditing {
+		t.Fatalf("state = %v, want %v", next.state, stateEditing)
+	}
+
+	if next.editPath != configPath {
+		t.Fatalf("editPath = %q, want %q", next.editPath, configPath)
+	}
+
+	if next.draft.Alias != "" || next.draft.Hostname != "" {
+		t.Fatalf("draft = %#v, want blank create draft", next.draft)
+	}
+
+	if next.editMode != editModeCreate {
+		t.Fatalf("editMode = %v, want %v", next.editMode, editModeCreate)
+	}
+}
+
+func TestModelPreviewsAndSavesCreatedHost(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	configPath := filepath.Join(home, ".ssh", "config")
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q) error = %v", filepath.Dir(configPath), err)
+	}
+	if err := os.WriteFile(configPath, []byte("Host web\n  HostName web.example.com\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", configPath, err)
+	}
+
+	m := New(Dependencies{
+		Version: "dev",
+		LoadHosts: func() (sshconfig.Result, error) {
+			return sshconfig.Load(configPath)
+		},
+	})
+
+	updated, _ := m.Update(m.Init()())
+	next := updated.(Model)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyCtrlN})
+	next = updated.(Model)
+
+	next.editorFields[0].SetValue("api")
+	next.editorFields[1].SetValue("api.example.com")
+	next.editorFields[2].SetValue("svc")
+	next.editorFields[3].SetValue("2222")
+	next.editorFields[4].SetValue("bastion")
+	next.editorFields[5].SetValue("~/.ssh/id_ed25519, ~/.ssh/id_rsa")
+	next.syncDraftFromEditor()
+
+	updated, _ = next.preparePreview()
+	next = updated.(Model)
+
+	if next.state != statePreview {
+		t.Fatalf("state = %v, want %v", next.state, statePreview)
+	}
+
+	for _, want := range []string{"Host api", `HostName "api.example.com"`, `User "svc"`, `IdentityFile "~/.ssh/id_ed25519"`} {
+		if !strings.Contains(next.preview, want) {
+			t.Fatalf("preview = %q, want substring %q", next.preview, want)
+		}
+	}
+
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	next = updated.(Model)
+
+	if next.state != stateReady {
+		t.Fatalf("state = %v, want %v", next.state, stateReady)
+	}
+
+	if len(next.visible) != 2 {
+		t.Fatalf("len(visible) = %d, want 2 after reload", len(next.visible))
+	}
+
+	got, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ReadFile(%q) error = %v", configPath, err)
+	}
+	text := string(got)
+	for _, want := range []string{"Host api", `HostName "api.example.com"`, `User "svc"`, `Port "2222"`, `ProxyJump "bastion"`} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("saved config = %q, want substring %q", text, want)
+		}
+	}
+}
+
+func TestModelKeepsEditorOpenOnBlankAlias(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	configPath := filepath.Join(home, ".ssh", "config")
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q) error = %v", filepath.Dir(configPath), err)
+	}
+	if err := os.WriteFile(configPath, []byte("Host web\n  HostName web.example.com\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", configPath, err)
+	}
+
+	m := New(Dependencies{Version: "dev", LoadHosts: func() (sshconfig.Result, error) { return sshconfig.Load(configPath) }})
+	updated, _ := m.Update(m.Init()())
+	next := updated.(Model)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyCtrlN})
+	next = updated.(Model)
+
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	next = updated.(Model)
+
+	if next.state != stateEditing {
+		t.Fatalf("state = %v, want %v", next.state, stateEditing)
+	}
+
+	if next.editErr == nil || !strings.Contains(next.editErr.Error(), "alias is required") {
+		t.Fatalf("editErr = %v, want alias validation error", next.editErr)
+	}
+}
+
+func TestModelKeepsEditorOpenOnDuplicateAlias(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	configPath := filepath.Join(home, ".ssh", "config")
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q) error = %v", filepath.Dir(configPath), err)
+	}
+	if err := os.WriteFile(configPath, []byte("Host web\n  HostName web.example.com\n\nHost db\n  HostName db.example.com\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", configPath, err)
+	}
+
+	m := New(Dependencies{Version: "dev", LoadHosts: func() (sshconfig.Result, error) { return sshconfig.Load(configPath) }})
+	updated, _ := m.Update(m.Init()())
+	next := updated.(Model)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	next = updated.(Model)
+	next.editorFields[0].SetValue("db")
+	next.syncDraftFromEditor()
+	updated, _ = next.preparePreview()
+	next = updated.(Model)
+
+	if next.state != stateEditing {
+		t.Fatalf("state = %v, want %v", next.state, stateEditing)
+	}
+
+	if next.editErr == nil || !strings.Contains(next.editErr.Error(), "already exists") {
+		t.Fatalf("editErr = %v, want duplicate alias validation error", next.editErr)
+	}
+}
+
+func TestModelNavigatesEditorWithArrowKeys(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	configPath := filepath.Join(home, ".ssh", "config")
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q) error = %v", filepath.Dir(configPath), err)
+	}
+	if err := os.WriteFile(configPath, []byte("Host web\n  HostName web.example.com\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", configPath, err)
+	}
+
+	m := New(Dependencies{Version: "dev", LoadHosts: func() (sshconfig.Result, error) { return sshconfig.Load(configPath) }})
+	updated, _ := m.Update(m.Init()())
+	next := updated.(Model)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyCtrlN})
+	next = updated.(Model)
+
+	if next.editorIndex != 0 {
+		t.Fatalf("editorIndex = %d, want 0", next.editorIndex)
+	}
+
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyDown})
+	next = updated.(Model)
+	if next.editorIndex != 1 {
+		t.Fatalf("editorIndex = %d, want 1 after down", next.editorIndex)
+	}
+
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyUp})
+	next = updated.(Model)
+	if next.editorIndex != 0 {
+		t.Fatalf("editorIndex = %d, want 0 after up", next.editorIndex)
+	}
+
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyTab})
+	next = updated.(Model)
+	if next.editorIndex != 0 {
+		t.Fatalf("editorIndex = %d, want tab to do nothing", next.editorIndex)
+	}
+}
+
+func TestModelRejectsDuplicateAliasAcrossLoadedFiles(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	configDir := filepath.Join(home, ".ssh")
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q) error = %v", configDir, err)
+	}
+
+	rootPath := filepath.Join(configDir, "config")
+	childPath := filepath.Join(configDir, "shared.config")
+	if err := os.WriteFile(childPath, []byte("Host shared\n  HostName shared.example.com\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", childPath, err)
+	}
+	if err := os.WriteFile(rootPath, []byte("Include shared.config\nHost root\n  HostName root.example.com\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", rootPath, err)
+	}
+
+	m := New(Dependencies{Version: "dev", LoadHosts: func() (sshconfig.Result, error) { return sshconfig.Load(rootPath) }})
+	updated, _ := m.Update(m.Init()())
+	next := updated.(Model)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	next = updated.(Model)
+	if next.state != stateEditing {
+		t.Fatalf("state = %v, want %v", next.state, stateEditing)
+	}
+
+	next.editorFields[0].SetValue("root")
+	next.syncDraftFromEditor()
+	updated, _ = next.preparePreview()
+	next = updated.(Model)
+
+	if next.state != stateEditing {
+		t.Fatalf("state = %v, want %v", next.state, stateEditing)
+	}
+	if next.editErr == nil || !strings.Contains(next.editErr.Error(), "already exists") {
+		t.Fatalf("editErr = %v, want cross-file duplicate alias validation error", next.editErr)
+	}
+}
+
+func TestModelReturnsToEditorFromPreviewOnEscape(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	configPath := filepath.Join(home, ".ssh", "config")
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q) error = %v", filepath.Dir(configPath), err)
+	}
+	if err := os.WriteFile(configPath, []byte("Host web\n  HostName web.example.com\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", configPath, err)
+	}
+
+	m := New(Dependencies{Version: "dev", LoadHosts: func() (sshconfig.Result, error) { return sshconfig.Load(configPath) }})
+	updated, _ := m.Update(m.Init()())
+	next := updated.(Model)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyCtrlN})
+	next = updated.(Model)
+	next.editorFields[0].SetValue("api")
+	next.editorFields[1].SetValue("api.example.com")
+	next.syncDraftFromEditor()
+	updated, _ = next.preparePreview()
+	next = updated.(Model)
+
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	next = updated.(Model)
+
+	if next.state != stateEditing {
+		t.Fatalf("state = %v, want %v", next.state, stateEditing)
+	}
+}
+
+func TestModelDeletesHostAfterConfirmation(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	configPath := filepath.Join(home, ".ssh", "config")
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q) error = %v", filepath.Dir(configPath), err)
+	}
+	if err := os.WriteFile(configPath, []byte("Host web\n  HostName web.example.com\n\nHost db\n  HostName db.example.com\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", configPath, err)
+	}
+
+	m := New(Dependencies{
+		Version: "dev",
+		LoadHosts: func() (sshconfig.Result, error) {
+			return sshconfig.Load(configPath)
+		},
+	})
+
+	updated, _ := m.Update(m.Init()())
+	next := updated.(Model)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyDown})
+	next = updated.(Model)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyCtrlD})
+	next = updated.(Model)
+
+	if next.state != stateConfirmDelete {
+		t.Fatalf("state = %v, want %v", next.state, stateConfirmDelete)
+	}
+
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	next = updated.(Model)
+
+	if next.state != stateReady {
+		t.Fatalf("state = %v, want %v", next.state, stateReady)
+	}
+
+	if len(next.visible) != 1 {
+		t.Fatalf("len(visible) = %d, want 1 after delete reload", len(next.visible))
+	}
+
+	got, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ReadFile(%q) error = %v", configPath, err)
+	}
+	text := string(got)
+	if strings.Contains(text, "Host db") {
+		t.Fatalf("saved config = %q, want db host removed", text)
+	}
+	if !strings.Contains(text, "Host web") {
+		t.Fatalf("saved config = %q, want remaining host kept", text)
+	}
+}
+
+func TestModelCancelsDeleteWithEscape(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	configPath := filepath.Join(home, ".ssh", "config")
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q) error = %v", filepath.Dir(configPath), err)
+	}
+	original := "Host web\n  HostName web.example.com\n\nHost db\n  HostName db.example.com\n"
+	if err := os.WriteFile(configPath, []byte(original), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", configPath, err)
+	}
+
+	m := New(Dependencies{Version: "dev", LoadHosts: func() (sshconfig.Result, error) { return sshconfig.Load(configPath) }})
+	updated, _ := m.Update(m.Init()())
+	next := updated.(Model)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyDown})
+	next = updated.(Model)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyCtrlD})
+	next = updated.(Model)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	next = updated.(Model)
+
+	if next.state != stateReady {
+		t.Fatalf("state = %v, want %v", next.state, stateReady)
+	}
+
+	got, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ReadFile(%q) error = %v", configPath, err)
+	}
+	if string(got) != original {
+		t.Fatalf("saved config = %q, want unchanged", string(got))
+	}
+}
+
+func TestModelEditsExistingHostAndSavesIt(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	configPath := filepath.Join(home, ".ssh", "config")
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q) error = %v", filepath.Dir(configPath), err)
+	}
+	if err := os.WriteFile(configPath, []byte("Host web\n  HostName web.example.com\n  User root\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", configPath, err)
+	}
+
+	m := New(Dependencies{
+		Version: "dev",
+		LoadHosts: func() (sshconfig.Result, error) {
+			return sshconfig.Load(configPath)
+		},
+	})
+
+	updated, _ := m.Update(m.Init()())
+	next := updated.(Model)
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	next = updated.(Model)
+
+	if next.state != stateEditing {
+		t.Fatalf("state = %v, want %v", next.state, stateEditing)
+	}
+
+	next.editorFields[0].SetValue("api")
+	next.editorFields[1].SetValue("web.internal")
+	next.editorFields[2].SetValue("alice")
+	next.syncDraftFromEditor()
+
+	updated, _ = next.preparePreview()
+	next = updated.(Model)
+	updated, _ = next.savePreview()
+	next = updated.(Model)
+
+	got, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ReadFile(%q) error = %v", configPath, err)
+	}
+	text := string(got)
+	for _, want := range []string{"Host api", `HostName "web.internal"`, `User "alice"`} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("saved config = %q, want substring %q", text, want)
+		}
+	}
+	if strings.Contains(text, "Host web") {
+		t.Fatalf("saved config = %q, want renamed host only", text)
 	}
 }
 

@@ -15,5 +15,10 @@ type Host struct {
 	IdentityFiles []string
 	ProxyJump     string
 	SourcePath    string
+	filePath      string
 	Wildcard      bool
+}
+
+func (h Host) FilePath() string {
+	return h.filePath
 }

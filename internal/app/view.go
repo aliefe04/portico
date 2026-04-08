@@ -18,24 +18,81 @@ func (m Model) View() string {
 		return ui.Muted.Render("Loading SSH config...")
 	case stateError:
 		return ui.Error.Render(fmt.Sprintf("error loading SSH config: %s", sanitizeTerminalText(fmt.Sprint(m.err))))
+	case stateEditing:
+		return m.renderEditor()
+	case statePreview:
+		return m.renderPreview()
+	case stateConfirmDelete:
+		return m.renderDeleteConfirm()
 	default:
-		parts := []string{
-			ui.Title.Render("Portico"),
-			ui.Muted.Render("Filter by alias or hostname"),
-			m.filter.View(),
-		}
-
-		if len(m.visible) == 0 {
-			parts = append(parts, ui.Muted.Render("No hosts match the current filter."))
-		} else if m.useWideLayout() {
-			parts = append(parts, m.renderSplitLayout())
-		} else {
-			parts = append(parts, m.renderHostList(), ui.Muted.Render("Selected host"), m.renderHostDetails(m.visible[m.selected]))
-		}
-
-		parts = append(parts, ui.Muted.Render("up/down: move  esc/ctrl+c: quit"))
-		return strings.Join(parts, "\n\n")
+		return m.renderBrowse()
 	}
+}
+
+func (m Model) renderBrowse() string {
+	parts := []string{
+		ui.Title.Render("Portico"),
+		ui.Muted.Render("Filter by alias or hostname"),
+		m.filter.View(),
+	}
+
+	if len(m.visible) == 0 {
+		parts = append(parts, ui.Muted.Render("No hosts match the current filter."))
+	} else if m.useWideLayout() {
+		parts = append(parts, m.renderSplitLayout())
+	} else {
+		parts = append(parts, m.renderHostList(), ui.Muted.Render("Selected host"), m.renderHostDetails(m.visible[m.selected]))
+	}
+
+	parts = append(parts, ui.Muted.Render("ctrl+n: new  ctrl+e: edit  ctrl+d: delete  up/down: move  esc/ctrl+c: quit"))
+	return strings.Join(parts, "\n\n")
+}
+
+func (m Model) renderEditor() string {
+	labels := editorFieldPlaceholders()
+	parts := []string{
+		ui.Title.Render(map[editMode]string{editModeCreate: "Create host", editModeUpdate: "Edit host"}[m.editMode]),
+		ui.Muted.Render("up/down: move  ctrl+s/enter: preview  esc: cancel"),
+	}
+	if m.editErr != nil {
+		parts = append(parts, ui.Error.Render(sanitizeTerminalText(m.editErr.Error())))
+	}
+
+	for i, field := range m.editorFields {
+		marker := " "
+		if i == m.editorIndex {
+			marker = ">"
+		}
+		parts = append(parts, fmt.Sprintf("%s %s: %s", marker, labels[i], sanitizeTerminalText(field.Value())))
+	}
+
+	return strings.Join(parts, "\n\n")
+}
+
+func (m Model) renderPreview() string {
+	parts := []string{
+		ui.Title.Render("Save preview"),
+		ui.Muted.Render("s/enter: save  e: edit  esc: back"),
+	}
+	if m.editErr != nil {
+		parts = append(parts, ui.Error.Render(sanitizeTerminalText(m.editErr.Error())))
+	}
+	parts = append(parts,
+		ui.Panel.Render(sanitizeMultilineText(m.preview)),
+	)
+	return strings.Join(parts, "\n\n")
+}
+
+func (m Model) renderDeleteConfirm() string {
+	parts := []string{
+		ui.Title.Render("Delete host"),
+		ui.Error.Render(fmt.Sprintf("Delete %s?", sanitizeTerminalText(m.editOriginalAlias))),
+		ui.Muted.Render("y/enter: delete  n/esc: cancel"),
+	}
+	if m.editErr != nil {
+		parts = append(parts, ui.Error.Render(sanitizeTerminalText(m.editErr.Error())))
+	}
+	return strings.Join(parts, "\n\n")
 }
 
 func (m Model) useWideLayout() bool {
@@ -141,4 +198,12 @@ func sanitizeTerminalText(value string) string {
 	}
 
 	return strings.TrimSpace(b.String())
+}
+
+func sanitizeMultilineText(value string) string {
+	lines := strings.Split(value, "\n")
+	for i, line := range lines {
+		lines[i] = sanitizeTerminalText(line)
+	}
+	return strings.Join(lines, "\n")
 }

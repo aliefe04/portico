@@ -27,6 +27,7 @@ func TestLoadBasicHosts(t *testing.T) {
 				Port:          "2222",
 				IdentityFiles: []string{"~/.ssh/id_ed25519"},
 				SourcePath:    path,
+				filePath:      path,
 			},
 			{
 				Alias:      "db",
@@ -34,6 +35,7 @@ func TestLoadBasicHosts(t *testing.T) {
 				Hostname:   "db.example.com",
 				User:       "admin",
 				SourcePath: path,
+				filePath:   path,
 			},
 		},
 	}
@@ -61,6 +63,7 @@ func TestLoadWildcardHost(t *testing.T) {
 				User:       "deploy",
 				Port:       "2200",
 				SourcePath: path,
+				filePath:   path,
 				Wildcard:   true,
 			},
 		},
@@ -89,6 +92,7 @@ func TestLoadIncludedHosts(t *testing.T) {
 				Hostname:   "cache.example.com",
 				User:       "redis",
 				SourcePath: includedPath,
+				filePath:   includedPath,
 			},
 			{
 				Alias:      "bastion",
@@ -96,6 +100,7 @@ func TestLoadIncludedHosts(t *testing.T) {
 				Hostname:   "bastion.example.com",
 				User:       "ops",
 				SourcePath: path,
+				filePath:   path,
 			},
 		},
 	}
@@ -138,6 +143,7 @@ func TestLoadIncludedHostsExpandsTildePaths(t *testing.T) {
 				Patterns:   []string{"cache"},
 				Hostname:   "cache.example.com",
 				SourcePath: childPath,
+				filePath:   childPath,
 			},
 		},
 	}
@@ -186,12 +192,14 @@ func TestLoadAllowsRelativeIncludeOutsideEntryFileDirectoryWithinSSHHome(t *test
 				Patterns:   []string{"shared"},
 				Hostname:   "shared.example.com",
 				SourcePath: sharedRealPath,
+				filePath:   sharedRealPath,
 			},
 			{
 				Alias:      "root",
 				Patterns:   []string{"root"},
 				Hostname:   "root.example.com",
 				SourcePath: rootPath,
+				filePath:   rootPath,
 			},
 		},
 	}
@@ -244,6 +252,7 @@ func TestLoadAllowsCrossRootIncludeBetweenStandardSSHRoots(t *testing.T) {
 			Patterns:   []string{"shared"},
 			Hostname:   "shared.example.com",
 			SourcePath: childPath,
+			filePath:   childPath,
 		}},
 	}
 
@@ -288,6 +297,7 @@ func TestLoadAllowsHomeRootIncludeFromSSHConfig(t *testing.T) {
 			Patterns:   []string{"orb"},
 			Hostname:   "orb.example.com",
 			SourcePath: childPath,
+			filePath:   childPath,
 		}},
 	}
 
@@ -333,6 +343,7 @@ func TestLoadAppliesParentDefaultsToIncludedHosts(t *testing.T) {
 				Hostname:   "cache.example.com",
 				User:       "alice",
 				SourcePath: childRealPath,
+				filePath:   childRealPath,
 			},
 			{
 				Alias:      "*",
@@ -340,6 +351,7 @@ func TestLoadAppliesParentDefaultsToIncludedHosts(t *testing.T) {
 				Hostname:   "*",
 				User:       "alice",
 				SourcePath: rootPath,
+				filePath:   rootPath,
 				Wildcard:   true,
 			},
 		},
@@ -384,6 +396,7 @@ func TestLoadResolvesInheritedHostValues(t *testing.T) {
 				Port:          "22",
 				IdentityFiles: []string{"~/.ssh/id_default"},
 				SourcePath:    path,
+				filePath:      path,
 				Wildcard:      true,
 			},
 			{
@@ -395,6 +408,7 @@ func TestLoadResolvesInheritedHostValues(t *testing.T) {
 				IdentityFiles: []string{"~/.ssh/id_default", "~/.ssh/id_wild"},
 				ProxyJump:     "bastion",
 				SourcePath:    path,
+				filePath:      path,
 				Wildcard:      true,
 			},
 			{
@@ -406,6 +420,7 @@ func TestLoadResolvesInheritedHostValues(t *testing.T) {
 				IdentityFiles: []string{"~/.ssh/id_default", "~/.ssh/id_wild"},
 				ProxyJump:     "bastion",
 				SourcePath:    path,
+				filePath:      path,
 			},
 		},
 	}
@@ -448,6 +463,7 @@ func TestLoadRewritesIncludeWithTabWhitespace(t *testing.T) {
 				Patterns:   []string{"child"},
 				Hostname:   "child.example.com",
 				SourcePath: childRealPath,
+				filePath:   childRealPath,
 			},
 		},
 	}
@@ -475,18 +491,21 @@ func TestLoadNestedIncludePreservesRelativeSourcePath(t *testing.T) {
 				Patterns:   []string{"grandchild"},
 				Hostname:   "grandchild.example.com",
 				SourcePath: grandchildPath,
+				filePath:   grandchildPath,
 			},
 			{
 				Alias:      "child",
 				Patterns:   []string{"child"},
 				Hostname:   "child.example.com",
 				SourcePath: childPath,
+				filePath:   childPath,
 			},
 			{
 				Alias:      "root",
 				Patterns:   []string{"root"},
 				Hostname:   "root.example.com",
 				SourcePath: path,
+				filePath:   path,
 			},
 		},
 	}
@@ -629,12 +648,14 @@ func TestLoadDeduplicatesGlobbedIncludes(t *testing.T) {
 				Patterns:   []string{"first"},
 				Hostname:   "first.example.com",
 				SourcePath: firstRealPath,
+				filePath:   firstRealPath,
 			},
 			{
 				Alias:      "second",
 				Patterns:   []string{"second"},
 				Hostname:   "second.example.com",
 				SourcePath: secondRealPath,
+				filePath:   secondRealPath,
 			},
 		},
 	}
@@ -711,6 +732,7 @@ func TestLoadAllowsOtherEmptyValues(t *testing.T) {
 				Patterns:   []string{"sample"},
 				Hostname:   "sample",
 				SourcePath: path,
+				filePath:   path,
 			},
 		},
 	}
@@ -721,5 +743,9 @@ func TestLoadAllowsOtherEmptyValues(t *testing.T) {
 }
 
 func fixturePath(name string) string {
-	return filepath.Join("testdata", "configs", name)
+	path, err := filepath.Abs(filepath.Join("testdata", "configs", name))
+	if err != nil {
+		panic(err)
+	}
+	return path
 }

@@ -6,7 +6,7 @@ It aims for the same calm, useful feel as modern terminal tools: fast, readable,
 
 ## Overview
 
-![Portico main view](docs/assets/portico-main-view.svg)
+![Portico main view](docs/assets/portico-main-view.png)
 
 ## Status
 

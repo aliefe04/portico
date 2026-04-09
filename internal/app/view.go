@@ -44,7 +44,11 @@ func (m Model) renderBrowse() string {
 		parts = append(parts, m.renderHostList(), ui.Muted.Render("Selected host"), m.renderHostDetails(m.visible[m.selected]))
 	}
 
-	parts = append(parts, ui.Muted.Render("ctrl+n: new  ctrl+e: edit  ctrl+d: delete  up/down: move  esc/ctrl+c: quit"))
+	if m.browseErr != nil {
+		parts = append(parts, ui.Error.Render(sanitizeTerminalText(m.browseErr.Error())))
+	}
+
+	parts = append(parts, ui.Muted.Render("enter: connect  ctrl+n: new  ctrl+e: edit  ctrl+d: delete  up/down: move  esc/ctrl+c: quit"))
 	return strings.Join(parts, "\n\n")
 }
 

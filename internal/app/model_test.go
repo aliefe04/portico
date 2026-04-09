@@ -981,6 +981,102 @@ func TestModelEditsExistingHostAndSavesIt(t *testing.T) {
 	}
 }
 
+func TestModelConnectsSelectedHostOnEnter(t *testing.T) {
+	called := ""
+	m := New(Dependencies{
+		Version: "dev",
+		ConnectHost: func(alias string) tea.Cmd {
+			called = alias
+			return func() tea.Msg { return ConnectFinishedMsg{Alias: alias} }
+		},
+	})
+	m.state = stateReady
+	m.hosts = []sshconfig.Host{{Alias: "web", Hostname: "web.example.com"}}
+	m.visible = append([]sshconfig.Host(nil), m.hosts...)
+
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	next := updated.(Model)
+
+	if called != "web" {
+		t.Fatalf("ConnectHost alias = %q, want %q", called, "web")
+	}
+	if cmd == nil {
+		t.Fatal("Update() cmd = nil, want connect command")
+	}
+
+	updated, _ = next.Update(cmd())
+	next = updated.(Model)
+	if next.state != stateReady {
+		t.Fatalf("state = %v, want %v", next.state, stateReady)
+	}
+	if next.browseErr != nil {
+		t.Fatalf("browseErr = %v, want nil after successful connect", next.browseErr)
+	}
+}
+
+func TestModelIgnoresConnectWithNoVisibleHosts(t *testing.T) {
+	called := false
+	m := New(Dependencies{
+		Version: "dev",
+		ConnectHost: func(alias string) tea.Cmd {
+			called = true
+			return nil
+		},
+	})
+	m.state = stateReady
+
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	next := updated.(Model)
+
+	if called {
+		t.Fatal("ConnectHost called, want no-op with empty visible hosts")
+	}
+	if cmd != nil {
+		t.Fatalf("cmd = %v, want nil", cmd)
+	}
+	if next.state != stateReady {
+		t.Fatalf("state = %v, want %v", next.state, stateReady)
+	}
+}
+
+func TestModelShowsConnectErrorInBrowseMode(t *testing.T) {
+	m := New(Dependencies{
+		Version: "dev",
+		ConnectHost: func(alias string) tea.Cmd {
+			return func() tea.Msg { return ConnectFinishedMsg{Alias: alias, Err: errors.New("ssh failed\x1b[31m")} }
+		},
+	})
+	m.state = stateReady
+	m.hosts = []sshconfig.Host{{Alias: "web", Hostname: "web.example.com"}}
+	m.visible = append([]sshconfig.Host(nil), m.hosts...)
+
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	next := updated.(Model)
+	updated, _ = next.Update(cmd())
+	next = updated.(Model)
+
+	if next.state != stateReady {
+		t.Fatalf("state = %v, want %v", next.state, stateReady)
+	}
+	if next.browseErr == nil {
+		t.Fatal("browseErr = nil, want connect error")
+	}
+
+	view := next.View()
+	if !strings.Contains(view, "ssh failed[31m") {
+		t.Fatalf("View() = %q, want sanitized connect error", view)
+	}
+}
+
+func TestModelBrowseViewShowsConnectShortcut(t *testing.T) {
+	m := readyModelForTest([]sshconfig.Host{{Alias: "web", Hostname: "web.example.com"}})
+
+	view := m.View()
+	if !strings.Contains(view, "enter: connect") {
+		t.Fatalf("View() = %q, want connect shortcut", view)
+	}
+}
+
 func readyModelForTest(hosts []sshconfig.Host) Model {
 	m := New(Dependencies{Version: "dev"})
 	m.state = stateReady

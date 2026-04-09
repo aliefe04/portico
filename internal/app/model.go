@@ -10,8 +10,9 @@ import (
 )
 
 type Dependencies struct {
-	Version   string
-	LoadHosts func() (sshconfig.Result, error)
+	Version     string
+	LoadHosts   func() (sshconfig.Result, error)
+	ConnectHost func(alias string) tea.Cmd
 }
 
 type modelState int
@@ -37,6 +38,11 @@ type loadHostsMsg struct {
 	err    error
 }
 
+type ConnectFinishedMsg struct {
+	Alias string
+	Err   error
+}
+
 type Model struct {
 	deps              Dependencies
 	state             modelState
@@ -54,6 +60,7 @@ type Model struct {
 	editorIndex       int
 	previewDoc        *sshconfigedit.Document
 	preview           string
+	browseErr         error
 	editErr           error
 	err               error
 }
@@ -62,6 +69,11 @@ func New(deps Dependencies) Model {
 	if deps.LoadHosts == nil {
 		deps.LoadHosts = func() (sshconfig.Result, error) {
 			return sshconfig.Result{}, nil
+		}
+	}
+	if deps.ConnectHost == nil {
+		deps.ConnectHost = func(string) tea.Cmd {
+			return nil
 		}
 	}
 

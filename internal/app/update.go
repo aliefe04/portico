@@ -39,7 +39,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.editorFields = nil
 		m.editPath = ""
 		m.editOriginalAlias = ""
+		m.browseErr = nil
 		m.editErr = nil
+	case ConnectFinishedMsg:
+		m.state = stateReady
+		m.browseErr = msg.Err
+		return m, nil
 	}
 
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
@@ -108,14 +113,17 @@ func (m Model) updateReady(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case tea.KeyCtrlN:
+		m.browseErr = nil
 		return m.startCreate(), nil
 	case tea.KeyCtrlE:
 		if host, ok := m.currentHost(); ok {
+			m.browseErr = nil
 			return m.startEdit(host), nil
 		}
 		return m, nil
 	case tea.KeyCtrlD:
 		if host, ok := m.currentHost(); ok {
+			m.browseErr = nil
 			m.state = stateConfirmDelete
 			m.editOriginalAlias = host.Alias
 			m.editPath = host.FilePath()
@@ -125,10 +133,17 @@ func (m Model) updateReady(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m, nil
+	case tea.KeyEnter:
+		if host, ok := m.currentHost(); ok {
+			m.browseErr = nil
+			return m, m.deps.ConnectHost(host.Alias)
+		}
+		return m, nil
 	}
 
 	var cmd tea.Cmd
 	m.filter, cmd = m.filter.Update(keyMsg)
+	m.browseErr = nil
 	m.applyFilter()
 	return m, cmd
 }

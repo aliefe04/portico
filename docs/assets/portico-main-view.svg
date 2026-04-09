@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+<title id="title">Portico main view</title>
+<desc id="desc">Illustration of the Portico terminal interface showing a filter box, host list, and selected host details.</desc>
+<rect width="1200" height="760" fill="#0b0d10"/>
+<rect x="62" y="36" width="1076" height="672" rx="12" fill="#2b303b" stroke="#4a4f59"/>
+<circle cx="86" cy="58" r="7" fill="#ff5f56"/>
+<circle cx="110" cy="58" r="7" fill="#ffbd2e"/>
+<circle cx="134" cy="58" r="7" fill="#27c93f"/>
+<text x="600" y="62" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#9cdcfe">/portico</text>
+<text x="66" y="96" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="28" fill="#f3f4f6">Portico</text>
+<text x="66" y="140" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" fill="#b7bcc5">Filter by alias or hostname</text>
+<text x="66" y="188" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" fill="#f3f4f6">&gt;</text>
+<text x="86" y="188" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" fill="#6b7280">Filter hosts</text>
+<rect x="66" y="220" width="360" height="114" rx="4" fill="none" stroke="#5a5f68"/>
+<rect x="436" y="220" width="662" height="174" rx="4" fill="none" stroke="#5a5f68"/>
+<text x="84" y="244" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="600" fill="#f3f4f6">Hosts</text>
+<text x="454" y="244" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="600" fill="#f3f4f6">Details</text>
+<text x="84" y="292" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#f3f4f6">orb</text>
+<text x="84" y="316" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#f3f4f6">&gt; bitbucket.org</text>
+<text x="84" y="340" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#f3f4f6">heltz-1</text>
+<text x="454" y="282" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#f3f4f6">Alias: bitbucket.org</text>
+<text x="454" y="306" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#f3f4f6">Hostname: altssh.bitbucket.org</text>
+<text x="454" y="330" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#f3f4f6">User: git</text>
+<text x="454" y="354" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#f3f4f6">Port: 443</text>
+<text x="454" y="378" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#f3f4f6">ProxyJump: -</text>
+<text x="454" y="402" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#f3f4f6">IdentityFiles: ~/.ssh/bitbucket_work</text>
+<text x="66" y="440" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#9aa0a9">enter: connect  ctrl+n: new  ctrl+e: edit  ctrl+d: delete  up/down: move  esc/ctrl+c: quit</text>
+</svg>

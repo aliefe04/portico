@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"unicode"
 
@@ -26,6 +27,12 @@ func main() {
 		Version: version.Summary(),
 		LoadHosts: func() (sshconfig.Result, error) {
 			return sshconfig.Load(configPath)
+		},
+		ConnectHost: func(alias string) tea.Cmd {
+			cmd := exec.Command("ssh", alias)
+			return tea.ExecProcess(cmd, func(err error) tea.Msg {
+				return app.ConnectFinishedMsg{Alias: alias, Err: err}
+			})
 		},
 	})
 	p := tea.NewProgram(m, tea.WithAltScreen())

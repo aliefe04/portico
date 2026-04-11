@@ -26,6 +26,24 @@ Tagged releases publish prebuilt binaries for macOS and Linux on the GitHub Rele
 
 https://github.com/aliefe04/portico/releases
 
+### curl installer
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/aliefe04/portico/master/scripts/install.sh | sh
+```
+
+Install system-wide when you want Portico available for the whole machine:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/aliefe04/portico/master/scripts/install.sh | sh -s -- --system
+```
+
+Install a specific release:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/aliefe04/portico/master/scripts/install.sh | sh -s -- --version v0.1.0
+```
+
 ## What it does today
 
 - Reads your SSH config
@@ -65,6 +83,7 @@ go run ./cmd/portico
 - Tagging `v*` runs the release workflow
 - Releases are built with GoReleaser
 - Release artifacts include checksums
+- `portico self-update` upgrades manual installs to the latest release
 
 ## Contributing
 

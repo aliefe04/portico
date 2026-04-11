@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/portico-dev/portico/internal/sshconfig"
-	"github.com/portico-dev/portico/internal/sshconfigedit"
+	"github.com/aliefe04/portico/internal/sshconfig"
+	"github.com/aliefe04/portico/internal/sshconfigedit"
 )
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

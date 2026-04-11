@@ -1,4 +1,4 @@
-module github.com/portico-dev/portico
+module github.com/aliefe04/portico
 
 go 1.24
 

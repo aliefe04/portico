@@ -6,8 +6,8 @@ import (
 	"unicode"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/portico-dev/portico/internal/sshconfig"
-	"github.com/portico-dev/portico/internal/ui"
+	"github.com/aliefe04/portico/internal/sshconfig"
+	"github.com/aliefe04/portico/internal/ui"
 )
 
 const wideLayoutThreshold = 100

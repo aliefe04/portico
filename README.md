@@ -12,6 +12,20 @@ It aims for the same calm, useful feel as modern terminal tools: fast, readable,
 
 Portico is early, but usable. It already supports browsing and safely editing `~/.ssh/config` from a Bubble Tea interface.
 
+## Installation
+
+### Go install
+
+```sh
+go install github.com/aliefe04/portico/cmd/portico@latest
+```
+
+### GitHub Releases
+
+Tagged releases publish prebuilt binaries for macOS and Linux on the GitHub Releases page:
+
+https://github.com/aliefe04/portico/releases
+
 ## What it does today
 
 - Reads your SSH config
@@ -46,6 +60,12 @@ go run ./cmd/portico
 - Go 1.24+
 - macOS or Linux
 
+## Releases
+
+- Tagging `v*` runs the release workflow
+- Releases are built with GoReleaser
+- Release artifacts include checksums
+
 ## Contributing
 
 Contributions are welcome.
@@ -65,4 +85,4 @@ Contributions are welcome.
 
 ## License
 
-This project will be released under an open-source license.
+MIT

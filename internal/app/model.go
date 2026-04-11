@@ -5,8 +5,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/portico-dev/portico/internal/sshconfig"
-	"github.com/portico-dev/portico/internal/sshconfigedit"
+	"github.com/aliefe04/portico/internal/sshconfig"
+	"github.com/aliefe04/portico/internal/sshconfigedit"
 )
 
 type Dependencies struct {

@@ -9,10 +9,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/portico-dev/portico/internal/app"
-	"github.com/portico-dev/portico/internal/platform"
-	"github.com/portico-dev/portico/internal/sshconfig"
-	"github.com/portico-dev/portico/internal/version"
+	"github.com/aliefe04/portico/internal/app"
+	"github.com/aliefe04/portico/internal/platform"
+	"github.com/aliefe04/portico/internal/sshconfig"
+	"github.com/aliefe04/portico/internal/version"
 )
 
 func main() {

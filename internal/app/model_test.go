@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/portico-dev/portico/internal/sshconfig"
+	"github.com/aliefe04/portico/internal/sshconfig"
 )
 
 func TestModelInitLoadsHosts(t *testing.T) {

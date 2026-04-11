@@ -108,10 +108,10 @@ if [ -z "$INSTALL_DIR" ]; then
   fi
 fi
 
-ARCHIVE_NAME="${BINARY_NAME}_${OS_NAME}_${ARCH_NAME}.tar.gz"
 BASE_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${VERSION}"
-ARCHIVE_URL="${BASE_URL}/${ARCHIVE_NAME}"
 CHECKSUMS_URL="${BASE_URL}/checksums.txt"
+VERSION_TRIMMED="${VERSION#v}"
+ARCHIVE_CANDIDATES="${BINARY_NAME}_${OS_NAME}_${ARCH_NAME}.tar.gz ${BINARY_NAME}_${VERSION_TRIMMED}_${OS_NAME}_${ARCH_NAME}.tar.gz"
 
 TMP_DIR="$(mktemp -d)"
 cleanup() {
@@ -119,8 +119,20 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-curl -fsSL "$ARCHIVE_URL" -o "$TMP_DIR/$ARCHIVE_NAME"
 curl -fsSL "$CHECKSUMS_URL" -o "$TMP_DIR/checksums.txt"
+
+ARCHIVE_NAME=""
+for candidate in $ARCHIVE_CANDIDATES; do
+  if curl -fsSL "${BASE_URL}/${candidate}" -o "$TMP_DIR/$candidate" 2>/dev/null; then
+    ARCHIVE_NAME="$candidate"
+    break
+  fi
+done
+
+if [ -z "$ARCHIVE_NAME" ]; then
+  echo "Release archive for ${OS_NAME}/${ARCH_NAME} was not found" >&2
+  exit 1
+fi
 
 EXPECTED_SUM="$(awk -v file="$ARCHIVE_NAME" '$2 == file {print $1}' "$TMP_DIR/checksums.txt")"
 if [ -z "$EXPECTED_SUM" ]; then

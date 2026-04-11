@@ -20,28 +20,28 @@ func TestArchiveName(t *testing.T) {
 	tests := []struct {
 		goos   string
 		goarch string
-		want   string
+		want   []string
 	}{
-		{goos: "darwin", goarch: "arm64", want: "portico_darwin_arm64.tar.gz"},
-		{goos: "darwin", goarch: "amd64", want: "portico_darwin_amd64.tar.gz"},
-		{goos: "linux", goarch: "arm64", want: "portico_linux_arm64.tar.gz"},
-		{goos: "linux", goarch: "amd64", want: "portico_linux_amd64.tar.gz"},
+		{goos: "darwin", goarch: "arm64", want: []string{"portico_darwin_arm64.tar.gz", "portico_0.1.0_darwin_arm64.tar.gz"}},
+		{goos: "darwin", goarch: "amd64", want: []string{"portico_darwin_amd64.tar.gz", "portico_0.1.0_darwin_amd64.tar.gz"}},
+		{goos: "linux", goarch: "arm64", want: []string{"portico_linux_arm64.tar.gz", "portico_0.1.0_linux_arm64.tar.gz"}},
+		{goos: "linux", goarch: "amd64", want: []string{"portico_linux_amd64.tar.gz", "portico_0.1.0_linux_amd64.tar.gz"}},
 	}
 
 	for _, tt := range tests {
-		got, err := ArchiveName(tt.goos, tt.goarch)
+		got, err := ArchiveNames("v0.1.0", tt.goos, tt.goarch)
 		if err != nil {
-			t.Fatalf("ArchiveName(%q, %q) error = %v", tt.goos, tt.goarch, err)
+			t.Fatalf("ArchiveNames(%q, %q) error = %v", tt.goos, tt.goarch, err)
 		}
-		if got != tt.want {
-			t.Fatalf("ArchiveName(%q, %q) = %q, want %q", tt.goos, tt.goarch, got, tt.want)
+		if strings.Join(got, ",") != strings.Join(tt.want, ",") {
+			t.Fatalf("ArchiveNames(%q, %q) = %q, want %q", tt.goos, tt.goarch, strings.Join(got, ","), strings.Join(tt.want, ","))
 		}
 	}
 }
 
 func TestArchiveNameRejectsUnsupportedPlatform(t *testing.T) {
-	if _, err := ArchiveName("windows", "amd64"); err == nil {
-		t.Fatal("ArchiveName() error = nil, want unsupported platform error")
+	if _, err := ArchiveNames("v0.1.0", "windows", "amd64"); err == nil {
+		t.Fatal("ArchiveNames() error = nil, want unsupported platform error")
 	}
 }
 
@@ -167,6 +167,37 @@ func TestSelfUpdate(t *testing.T) {
 	}
 	if string(got) != "new-binary" {
 		t.Fatalf("updated binary = %q, want %q", string(got), "new-binary")
+	}
+}
+
+func TestSelfUpdateSupportsVersionedArchiveNames(t *testing.T) {
+	archive := testArchive(t, map[string]string{"portico": "new-binary"})
+	sum := sha256sum(archive)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/repos/aliefe04/portico/releases/latest":
+			_, _ = w.Write([]byte(`{"tag_name":"v0.1.0"}`))
+		case "/aliefe04/portico/releases/download/v0.1.0/checksums.txt":
+			_, _ = fmt.Fprintf(w, "%s %s\n", sum, "portico_0.1.0_darwin_arm64.tar.gz")
+		case "/aliefe04/portico/releases/download/v0.1.0/portico_0.1.0_darwin_arm64.tar.gz":
+			_, _ = w.Write(archive)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	path := filepath.Join(t.TempDir(), "portico")
+	if err := os.WriteFile(path, []byte("old-binary"), 0o755); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", path, err)
+	}
+
+	result, err := (Updater{Client: server.Client(), APIBaseURL: server.URL, AssetBaseURL: server.URL}).SelfUpdate(context.Background(), "v0.0.9", path, "darwin", "arm64")
+	if err != nil {
+		t.Fatalf("SelfUpdate() error = %v", err)
+	}
+	if !result.Updated {
+		t.Fatal("Updated = false, want true")
 	}
 }
 

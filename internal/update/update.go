@@ -58,7 +58,7 @@ func (u Updater) SelfUpdate(ctx context.Context, currentVersion, execPath, goos,
 		return result, nil
 	}
 
-	assetName, err := ArchiveName(goos, goarch)
+	assetNames, err := ArchiveNames(latest, goos, goarch)
 	if err != nil {
 		return Result{}, err
 	}
@@ -67,7 +67,7 @@ func (u Updater) SelfUpdate(ctx context.Context, currentVersion, execPath, goos,
 	if err != nil {
 		return Result{}, err
 	}
-	expectedSum, err := ChecksumForAsset(checksums, assetName)
+	assetName, expectedSum, err := ResolveChecksumAsset(checksums, assetNames)
 	if err != nil {
 		return Result{}, err
 	}
@@ -112,20 +112,24 @@ func LatestTag(ctx context.Context, client *http.Client, apiBaseURL string) (str
 	return NormalizeVersion(release.TagName), nil
 }
 
-func ArchiveName(goos, goarch string) (string, error) {
+func ArchiveNames(version, goos, goarch string) ([]string, error) {
 	switch goos {
 	case "darwin", "linux":
 	default:
-		return "", fmt.Errorf("unsupported operating system: %s", goos)
+		return nil, fmt.Errorf("unsupported operating system: %s", goos)
 	}
 
 	switch goarch {
 	case "amd64", "arm64":
 	default:
-		return "", fmt.Errorf("unsupported architecture: %s", goarch)
+		return nil, fmt.Errorf("unsupported architecture: %s", goarch)
 	}
 
-	return fmt.Sprintf("%s_%s_%s.tar.gz", BinaryName, goos, goarch), nil
+	trimmedVersion := strings.TrimPrefix(NormalizeVersion(version), "v")
+	return []string{
+		fmt.Sprintf("%s_%s_%s.tar.gz", BinaryName, goos, goarch),
+		fmt.Sprintf("%s_%s_%s_%s.tar.gz", BinaryName, trimmedVersion, goos, goarch),
+	}, nil
 }
 
 func AssetURL(assetBaseURL, version, assetName string) string {
@@ -158,6 +162,16 @@ func ChecksumForAsset(data []byte, assetName string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("checksum for %s not found", assetName)
+}
+
+func ResolveChecksumAsset(data []byte, assetNames []string) (string, string, error) {
+	for _, assetName := range assetNames {
+		sum, err := ChecksumForAsset(data, assetName)
+		if err == nil {
+			return assetName, sum, nil
+		}
+	}
+	return "", "", fmt.Errorf("checksum for supported release assets not found")
 }
 
 func ExtractBinary(archive []byte, binaryName string) ([]byte, error) {
